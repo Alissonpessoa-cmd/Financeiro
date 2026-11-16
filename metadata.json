@@ -1,0 +1,6 @@
+{
+  "name": "Acompanhamento de Demandas – Setor Financeiro",
+  "description": "Painel executivo e gestão de demandas da equipe do setor financeiro com indicadores de desempenho, prazos, prioridades e controle operacional.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
