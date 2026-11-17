@@ -1,4 +1,4 @@
-import { AppState, Collaborator, CompletedActivityLog, Demand, DashboardTexts, PriorityKey } from './types';
+import { AppState, ClientRecord, Collaborator, ComodatoOperationType, ComodatoRecord, CompletedActivityLog, Demand, DashboardTexts, PriorityKey } from './types';
 import { calculateDuration, calculateDurationMinutes, getTodayYYYYMMDD, isHiddenUntilNextReset } from './utils';
 
 export const STORAGE_KEY = 'painel-fin-v1';
@@ -122,6 +122,8 @@ export function getSeedData(): AppState {
     cs,
     ds,
     logs,
+    comodatos: [],
+    clients: [],
   };
 }
 
@@ -225,11 +227,43 @@ export function loadState(): AppState {
       return normalizedDemand;
     });
 
+    const comodatos: ComodatoRecord[] = Array.isArray(parsed.comodatos)
+      ? parsed.comodatos.map((item: any, idx: number) => ({
+          id: item.id || `com-${idx}-${Date.now()}`,
+          tipoOperacao: (['Empréstimo', 'Venda', 'Recolha'].includes(item.tipoOperacao)
+            ? item.tipoOperacao
+            : 'Empréstimo') as ComodatoOperationType,
+          mapa: String(item.mapa || ''),
+          motorista: String(item.motorista || ''),
+          placa: String(item.placa || ''),
+          observacao: String(item.observacao || ''),
+          data: item.data || today,
+          nb: String(item.nb || ''),
+          cliente: String(item.cliente || ''),
+          quantidade: typeof item.quantidade === 'number' && item.quantidade > 0 ? item.quantidade : 1,
+          tipoEquipamento: String(item.tipoEquipamento || ''),
+          criadoEm: item.criadoEm || new Date().toISOString(),
+        }))
+      : [];
+
+    const clients: ClientRecord[] = Array.isArray(parsed.clients)
+      ? parsed.clients
+          .map((cli: any, idx: number) => ({
+            id: cli.id || `cli-${idx}-${Date.now()}`,
+            nb: String(cli.nb || '').trim(),
+            descricao: String(cli.descricao || '').trim(),
+            criadoEm: cli.criadoEm || new Date().toISOString(),
+          }))
+          .filter((cli: ClientRecord) => cli.nb || cli.descricao)
+      : [];
+
     return {
       t: { ...DEFAULT_TEXTS, ...(parsed.t || {}) },
       cs,
       ds,
       logs: mergedLogs,
+      comodatos,
+      clients,
     };
   } catch (err) {
     console.error('Failed to parse saved state:', err);

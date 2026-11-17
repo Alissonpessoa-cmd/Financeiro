@@ -1,4 +1,4 @@
-import { AppState, CompletedActivityLog, Demand, STATUS_META, PRIORITY_META } from './types';
+import { AppState, ClientRecord, ComodatoRecord, CompletedActivityLog, Demand, STATUS_META, PRIORITY_META } from './types';
 
 export function formatDate(dateStr?: string): string {
   if (!dateStr) return '—';
@@ -181,6 +181,65 @@ export function exportCompletedLogsToCSV(logs: CompletedActivityLog[]) {
   const link = document.createElement('a');
   link.setAttribute('href', url);
   link.setAttribute('download', `atividades_realizadas_${getTodayYYYYMMDD()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportComodatosToCSV(records: ComodatoRecord[]) {
+  const headers = [
+    'Data',
+    'Tipo (Venda / Comodato)',
+    'Mapa',
+    'Motorista',
+    'Placa do Carro',
+    'NB',
+    'Descrição do Cliente',
+    'Quantidade',
+    'Tipo de Equipamento',
+    'Observação',
+  ];
+
+  const rows = records.map((r) => [
+    `"${formatDate(r.data)}"`,
+    `"${(r.tipoOperacao || 'Comodato').replace(/"/g, '""')}"`,
+    `"${(r.mapa || '').replace(/"/g, '""')}"`,
+    `"${(r.motorista || '').replace(/"/g, '""')}"`,
+    `"${(r.placa || '').replace(/"/g, '""')}"`,
+    `"${(r.nb || '').replace(/"/g, '""')}"`,
+    `"${(r.cliente || '').replace(/"/g, '""')}"`,
+    `"${r.quantidade ?? 1}"`,
+    `"${(r.tipoEquipamento || '').replace(/"/g, '""')}"`,
+    `"${(r.observacao || '').replace(/"/g, '""')}"`,
+  ]);
+
+  const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((row) => row.join(';'))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `comodatos_vendas_${getTodayYYYYMMDD()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportClientsToCSV(clients: ClientRecord[]) {
+  const headers = ['NB', 'Descrição do Cliente'];
+
+  const rows = clients.map((c) => [
+    `"${(c.nb || '').replace(/"/g, '""')}"`,
+    `"${(c.descricao || '').replace(/"/g, '""')}"`,
+  ]);
+
+  const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((row) => row.join(';'))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `clientes_nb_${getTodayYYYYMMDD()}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

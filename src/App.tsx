@@ -14,8 +14,10 @@ import { CollaboratorsTab } from './components/CollaboratorsTab';
 import { CollaboratorModal, ModalFunctionItem } from './components/CollaboratorModal';
 import { CollaboratorProfileTab } from './components/CollaboratorProfileTab';
 import { CompletedActivitiesTab } from './components/CompletedActivitiesTab';
+import { ComodatoTab } from './components/ComodatoTab';
+import { ClientsTab } from './components/ClientsTab';
 import { NavTab } from './components/Navigation';
-import { AppState, Collaborator, CompletedActivityLog, Demand, DashboardTexts, PriorityKey, StatusKey, UserSession } from './types';
+import { AppState, ClientRecord, Collaborator, ComodatoRecord, CompletedActivityLog, Demand, DashboardTexts, PriorityKey, StatusKey, UserSession } from './types';
 import { loadState, saveState, getSeedData } from './data';
 import { exportToCSV, isHiddenUntilNextReset, getTodayYYYYMMDD, calculateDuration, calculateDurationMinutes, formatDate } from './utils';
 
@@ -354,6 +356,150 @@ export default function App() {
     }
   };
 
+  // Comodato / Venda management
+  const handleSaveComodato = (
+    data: Omit<ComodatoRecord, 'id' | 'criadoEm'>,
+    editId?: string
+  ) => {
+    updateState((prev) => {
+      const current = prev.comodatos || [];
+      if (editId) {
+        return {
+          ...prev,
+          comodatos: current.map((r) =>
+            r.id === editId ? { ...r, ...data, id: editId } : r
+          ),
+        };
+      }
+      const newRecord: ComodatoRecord = {
+        ...data,
+        id: `com-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        criadoEm: new Date().toISOString(),
+      };
+      return {
+        ...prev,
+        comodatos: [newRecord, ...current],
+      };
+    });
+  };
+
+  const handleDeleteComodato = (id: string) => {
+    if (!session || session.role !== 'manager') return;
+    updateState((prev) => ({
+      ...prev,
+      comodatos: (prev.comodatos || []).filter((r) => r.id !== id),
+    }));
+  };
+
+  const handleClearComodatos = () => {
+    if (!session || session.role !== 'manager') return;
+    if (window.confirm('Tem certeza de que deseja apagar todos os registros de comodato/venda?')) {
+      updateState((prev) => ({
+        ...prev,
+        comodatos: [],
+      }));
+    }
+  };
+
+  // Clients (NB / Descrição) management
+  const handleSaveClient = (data: { nb: string; descricao: string }, editId?: string) => {
+    updateState((prev) => {
+      const current = prev.clients || [];
+      const cleanNb = data.nb.trim();
+      const cleanDesc = data.descricao.trim();
+
+      if (editId) {
+        return {
+          ...prev,
+          clients: current.map((c) =>
+            c.id === editId ? { ...c, nb: cleanNb, descricao: cleanDesc } : c
+          ),
+        };
+      }
+
+      const existingIdx = current.findIndex(
+        (c) => c.nb.trim().toLowerCase() === cleanNb.toLowerCase()
+      );
+      if (existingIdx >= 0) {
+        const next = [...current];
+        next[existingIdx] = {
+          ...next[existingIdx],
+          nb: cleanNb,
+          descricao: cleanDesc,
+        };
+        return { ...prev, clients: next };
+      }
+
+      const newClient: ClientRecord = {
+        id: `cli-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        nb: cleanNb,
+        descricao: cleanDesc,
+        criadoEm: new Date().toISOString(),
+      };
+      return {
+        ...prev,
+        clients: [newClient, ...current],
+      };
+    });
+  };
+
+  const handleImportClients = (items: Array<{ nb: string; descricao: string }>): number => {
+    let importedCount = 0;
+    updateState((prev) => {
+      const next = [...(prev.clients || [])];
+      const indexByNb = new Map<string, number>();
+      next.forEach((c, idx) => {
+        const key = c.nb.trim().toLowerCase();
+        if (key) indexByNb.set(key, idx);
+      });
+
+      items.forEach((item, i) => {
+        const cleanNb = item.nb.trim();
+        const cleanDesc = item.descricao.trim();
+        if (!cleanNb || !cleanDesc) return;
+        const key = cleanNb.toLowerCase();
+        const existingIdx = indexByNb.get(key);
+        if (typeof existingIdx === 'number') {
+          next[existingIdx] = {
+            ...next[existingIdx],
+            nb: cleanNb,
+            descricao: cleanDesc,
+          };
+        } else {
+          indexByNb.set(key, next.length);
+          next.push({
+            id: `cli-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+            nb: cleanNb,
+            descricao: cleanDesc,
+            criadoEm: new Date().toISOString(),
+          });
+        }
+        importedCount += 1;
+      });
+
+      return { ...prev, clients: next };
+    });
+    return importedCount;
+  };
+
+  const handleDeleteClient = (id: string) => {
+    if (!session || session.role !== 'manager') return;
+    updateState((prev) => ({
+      ...prev,
+      clients: (prev.clients || []).filter((c) => c.id !== id),
+    }));
+  };
+
+  const handleClearClients = () => {
+    if (!session || session.role !== 'manager') return;
+    if (window.confirm('Tem certeza de que deseja apagar todos os clientes cadastrados?')) {
+      updateState((prev) => ({
+        ...prev,
+        clients: [],
+      }));
+    }
+  };
+
   // Save from Modal
   const handleSaveModalDemand = (demandData: Omit<Demand, 'id'>, editId?: string) => {
     updateState((prev) => {
@@ -416,6 +562,8 @@ export default function App() {
         cs: [],
         ds: [],
         logs: [],
+        comodatos: [],
+        clients: [],
       };
       setState(empty);
       saveState(empty);
@@ -533,8 +681,14 @@ export default function App() {
   const isManager = session.role === 'manager';
   const roleLabel = isManager ? 'Gestor' : 'Colaborador';
 
-  // Strict role-based isolation: collaborators can ONLY see their own tab
-  const effectiveTab: NavTab = isManager ? activeTab : 'colab';
+  // Strict role-based isolation: collaborators can ONLY see their own routine, Comodato, and Cadastro de Clientes
+  const effectiveTab: NavTab = isManager
+    ? activeTab
+    : activeTab === 'comodato'
+    ? 'comodato'
+    : activeTab === 'clientes'
+    ? 'clientes'
+    : 'colab';
   const effectiveColabIndex: number = isManager
     ? activeColabProfileIndex
     : typeof session.colabIndex === 'number'
@@ -595,7 +749,9 @@ export default function App() {
         activeColabIndex={effectiveTab === 'colab' ? effectiveColabIndex : null}
         collaborators={state.cs}
         onChangeTab={(tab) => {
-          if (isManager) setActiveTab(tab);
+          if (isManager || tab === 'colab' || tab === 'comodato' || tab === 'clientes') {
+            setActiveTab(tab);
+          }
         }}
         onSelectColabTab={(index) => {
           if (isManager) {
@@ -613,6 +769,8 @@ export default function App() {
         onPrint={handlePrint}
         demandsCount={dashDemands.length}
         completedLogsCount={state.logs?.length || 0}
+        comodatosCount={state.comodatos?.length || 0}
+        clientsCount={state.clients?.length || 0}
         userRole={session.role}
         userColabIndex={session.colabIndex}
       />
@@ -718,6 +876,30 @@ export default function App() {
             selectedDashDate={selectedDashDate}
             onSelectDashDate={setSelectedDashDate}
             onNavigateToDash={() => setActiveTab('dash')}
+          />
+        )}
+
+        {/* Tab: Comodato (Accessible to Manager & Collaborators; only Manager Alisson can delete) */}
+        {effectiveTab === 'comodato' && (
+          <ComodatoTab
+            records={state.comodatos || []}
+            clients={state.clients || []}
+            onSaveRecord={handleSaveComodato}
+            onDeleteRecord={handleDeleteComodato}
+            onClearRecords={handleClearComodatos}
+            canDelete={isManager}
+          />
+        )}
+
+        {/* Tab: Cadastro de Clientes (NB / Descrição) */}
+        {effectiveTab === 'clientes' && (
+          <ClientsTab
+            clients={state.clients || []}
+            onSaveClient={handleSaveClient}
+            onImportClients={handleImportClients}
+            onDeleteClient={handleDeleteClient}
+            onClearClients={handleClearClients}
+            canDelete={isManager}
           />
         )}
 

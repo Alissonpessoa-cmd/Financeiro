@@ -1,8 +1,8 @@
 import React from 'react';
-import { LayoutDashboard, Users, FileEdit, Printer, Plus, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, Users, FileEdit, Printer, Plus, CheckCircle2, Package, Building2 } from 'lucide-react';
 import { Collaborator } from '../types';
 
-export type NavTab = 'dash' | 'realizadas' | 'colab' | 'colabs' | 'ed';
+export type NavTab = 'dash' | 'realizadas' | 'comodato' | 'clientes' | 'colab' | 'colabs' | 'ed';
 
 interface NavigationProps {
   activeTab: NavTab;
@@ -14,6 +14,8 @@ interface NavigationProps {
   onPrint: () => void;
   demandsCount: number;
   completedLogsCount?: number;
+  comodatosCount?: number;
+  clientsCount?: number;
   userRole?: 'manager' | 'colab';
   userColabIndex?: number;
 }
@@ -28,23 +30,77 @@ export const Navigation: React.FC<NavigationProps> = ({
   onPrint,
   demandsCount,
   completedLogsCount = 0,
+  comodatosCount = 0,
+  clientsCount = 0,
   userRole = 'manager',
   userColabIndex,
 }) => {
-  // If user is a collaborator, lock access ONLY to their own tab
+  // If user is a collaborator, lock access ONLY to their own routine and Comodato tab
   if (userRole === 'colab' && typeof userColabIndex === 'number') {
     const currentColab = collaborators[userColabIndex];
 
     return (
       <nav className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
-        <div className="flex items-center gap-2 bg-slate-200/60 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-300/70 dark:border-slate-700">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-[#0d3b73] text-white shadow-sm">
+        <div className="flex items-center gap-1.5 bg-slate-200/60 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-300/70 dark:border-slate-700 overflow-x-auto scrollbar-none max-w-full">
+          <button
+            type="button"
+            onClick={() => onChangeTab('colab')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab !== 'comodato' && activeTab !== 'clientes'
+                ? 'bg-[#0d3b73] text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
             <span
               className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
               style={{ backgroundColor: currentColab?.c || '#1e7fd8' }}
             />
-            <span>Minhas Atividades & Horários · {currentColab?.n || 'Colaborador'}</span>
-          </div>
+            <span>Minhas Atividades &amp; Horários · {currentColab?.n || 'Colaborador'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChangeTab('comodato')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'comodato'
+                ? 'bg-[#0d3b73] text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Package className="w-4 h-4 shrink-0" />
+            <span>Comodato</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
+                activeTab === 'comodato'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-blue-100 dark:bg-blue-950/70 text-[#0d3b73] dark:text-blue-300'
+              }`}
+            >
+              {comodatosCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChangeTab('clientes')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'clientes'
+                ? 'bg-[#0d3b73] text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Building2 className="w-4 h-4 shrink-0" />
+            <span>Cadastro de Clientes</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
+                activeTab === 'clientes'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-blue-100 dark:bg-blue-950/70 text-[#0d3b73] dark:text-blue-300'
+              }`}
+            >
+              {clientsCount}
+            </span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
@@ -101,6 +157,52 @@ export const Navigation: React.FC<NavigationProps> = ({
             }`}
           >
             {completedLogsCount}
+          </span>
+        </button>
+
+        {/* Comodato (Mapa, Motorista, Placa, NB, Cliente, Equipamentos) */}
+        <button
+          onClick={() => onChangeTab('comodato')}
+          title="Controle de Comodato, Empréstimo e Venda por Mapa, Motorista e Equipamento"
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === 'comodato'
+              ? 'bg-[#0d3b73] text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Package className="w-4 h-4 shrink-0" />
+          <span>Comodato</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
+              activeTab === 'comodato'
+                ? 'bg-white/20 text-white'
+                : 'bg-blue-100 dark:bg-blue-950/70 text-[#0d3b73] dark:text-blue-300'
+            }`}
+          >
+            {comodatosCount}
+          </span>
+        </button>
+
+        {/* Cadastro de Clientes (NB / Descrição) */}
+        <button
+          onClick={() => onChangeTab('clientes')}
+          title="Cadastro de Clientes (NB e Descrição) para preenchimento automático no Comodato"
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === 'clientes'
+              ? 'bg-[#0d3b73] text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Building2 className="w-4 h-4 shrink-0" />
+          <span>Cadastro de Clientes</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
+              activeTab === 'clientes'
+                ? 'bg-white/20 text-white'
+                : 'bg-blue-100 dark:bg-blue-950/70 text-[#0d3b73] dark:text-blue-300'
+            }`}
+          >
+            {clientsCount}
           </span>
         </button>
 

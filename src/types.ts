@@ -76,11 +76,37 @@ export interface DashboardTexts {
   f4: string;
 }
 
+export type ComodatoOperationType = 'Empréstimo' | 'Venda' | 'Recolha';
+
+export interface ComodatoRecord {
+  id: string;
+  tipoOperacao: ComodatoOperationType;
+  mapa: string;
+  motorista: string;
+  placa: string;
+  observacao: string;
+  data: string; // YYYY-MM-DD
+  nb: string;
+  cliente: string;
+  quantidade: number;
+  tipoEquipamento: string;
+  criadoEm: string;
+}
+
+export interface ClientRecord {
+  id: string;
+  nb: string;
+  descricao: string;
+  criadoEm: string;
+}
+
 export interface AppState {
   t: DashboardTexts;
   cs: Collaborator[];
   ds: Demand[];
   logs?: CompletedActivityLog[];
+  comodatos?: ComodatoRecord[];
+  clients?: ClientRecord[];
 }
 
 export const STATUS_META: Record<StatusKey, { label: string; color: string; bg: string; plural: string; icon: string }> = {
